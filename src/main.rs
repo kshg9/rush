@@ -1,4 +1,3 @@
-#[allow(unused_imports)]
 use std::io::{self, Write};
 use std::{
     env,
@@ -37,14 +36,16 @@ fn run_command<'a>(input: impl Iterator<Item = &'a str>) {
             None => (command, None),
         };
 
+        let is_piped = input.peek().is_some();
+
         match cmd {
-            "echo" => {
+            "echo" if !is_piped => {
                 if let Some(arg_txt) = args {
                     println!("{}", arg_txt);
                 }
                 prev_output = None;
             }
-            "type" => {
+            "type" if !is_piped => {
                 if let Some(arg_txt) = args {
                     let target = arg_txt;
                     match target {
