@@ -3,4 +3,22 @@
 Credits and motivation:
  - [build-your-own-x](https://github.com/codecrafters-io/build-your-own-x)
  - [rustyline](https://github.com/kkawakam/rustyline)
- - To explore inner workings of shell and rust.
+
+### Development Roadmap
+[x] Basic command execution
+
+[x] Built-in command handlers
+
+[x] Basic pipe support
+(eg: `ls -la | grep .rs`)
+
+[ ] Argument parsing for quoted strings (in-progress)
+(eg: `ls -la | grep .rs`)
+
+[ ] Input/Output redirection (`>` and `>>`)
+
+### Objective
+ - To explore inner workings of shell and rust's std-lib.
+ - fun.
+
+> "To refactor, or not to refactor, that is the question"
