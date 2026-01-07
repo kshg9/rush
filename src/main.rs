@@ -1,9 +1,13 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::{env, os::unix::fs::PermissionsExt, path::PathBuf, process::Command};
+use std::{
+    env,
+    os::unix::fs::PermissionsExt,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 fn main() {
-    // TODO: Uncomment the code below to pass the first stage
     loop {
         print!("$ ");
         io::stdout().flush().unwrap();
@@ -11,51 +15,88 @@ fn main() {
         let mut line = String::new();
         io::stdin().read_line(&mut line).unwrap();
 
+        let command = line.trim().split('|').filter_map(|c| {
+            let chunk = c.trim();
+            if !chunk.is_empty() { Some(chunk) } else { None }
+        });
+
         match line.as_str() {
             "exit\n" => break,
-            _ => run_command(&line),
+            _ => run_command(command),
         }
     }
 }
 
-fn run_command(input: &str) {
-    let input = input.trim();
-    let (cmd, args) = match input.split_once(' ') {
-        Some((cmd, rest)) => (cmd, Some(rest)),
-        None => (input, None),
-    };
+fn run_command<'a>(input: impl Iterator<Item = &'a str>) {
+    let mut input = input.peekable();
+    let mut prev_output = None;
 
-    match cmd {
-        "echo" => {
-            if let Some(arg_txt) = args {
-                println!("{}", arg_txt);
-            }
-        }
-        "type" => {
-            if let Some(arg_txt) = args {
-                let target = arg_txt.trim();
-                match target {
-                    "echo" | "exit" | "type" => println!("{} is a shell builtin", target),
-                    _ => {
-                        if let Some(path) = find_in_path(target) {
-                            println!("{} is {}", target, path)
-                        } else {
-                            println!("{}: not found", target)
-                        }
-                    }
-                }
-            }
-        }
-        _ => {
-            if let Some(path) = find_in_path(cmd) {
-                let mut cmd = Command::new(cmd);
+    while let Some(command) = input.next() {
+        let (cmd, args) = match command.split_once(' ') {
+            Some((cmd, rest)) => (cmd, Some(rest)),
+            None => (command, None),
+        };
 
+        match cmd {
+            "echo" => {
                 if let Some(arg_txt) = args {
-                    cmd.args(arg_txt.split_whitespace());
+                    println!("{}", arg_txt);
                 }
-                let _ = cmd.status();
-            } else {
-                println!("{}: command not found", cmd);
+                prev_output = None;
+            }
+            "type" => {
+                if let Some(arg_txt) = args {
+                    let target = arg_txt;
+                    match target {
+                        "echo" | "exit" | "type" => println!("{} is a shell builtin", target),
+                        _ => {
+                            if let Some(path) = find_in_path(target) {
+                                println!("{} is {}", target, path)
+                            } else {
+                                println!("{}: not found", target)
+                            }
+                        }
+                    };
+                    prev_output = None;
+                }
+            }
+            _ => {
+                if let Some(path) = find_in_path(cmd) {
+                    let mut child_cmd = Command::new(path);
+
+                    if let Some(arg_txt) = args {
+                        child_cmd.args(arg_txt.split_whitespace());
+                    }
+
+                    // Input config
+                    if let Some(prev_out) = prev_output.take() {
+                        child_cmd.stdin(Stdio::from(prev_out));
+                    } else {
+                        child_cmd.stdin(Stdio::inherit());
+                    }
+
+                    // Output config
+                    if input.peek().is_some() {
+                        child_cmd.stdout(Stdio::piped());
+                    } else {
+                        child_cmd.stdout(Stdio::inherit());
+                    }
+
+                    match child_cmd.spawn() {
+                        Ok(mut child) => {
+                            if input.peek().is_some() {
+                                prev_output = child.stdout.take();
+                            } else {
+                                let _ = child.wait();
+                                prev_output = None;
+                            }
+                        }
+                        Err(e) => println!("{}: failed to execute: {}", cmd, e),
+                    }
+                } else {
+                    println!("{}: command not found", cmd);
+                    prev_output = None;
+                }
             }
         }
     }
