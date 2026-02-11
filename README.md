@@ -13,10 +13,9 @@ Credits and motivation:
 
 [x] Basic pipe support (eg: `ls -la | grep .rs`)
 
-[x] Argument parsing for quoted strings (in-progress) (eg:
-`ls -la | grep ".rs"`)
+[x] Argument parsing for quoted strings (eg: `ls -la | grep ".rs"`)
 
-[ ] Input/Output redirection (`>` and `>>`)
+[-] Input/Output redirection (`>` and `>>`) 🥲
 
 ### Objective
 
